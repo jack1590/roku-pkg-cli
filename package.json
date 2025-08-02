@@ -1,0 +1,75 @@
+{
+    "name": "@jcjoyac/roku-pkg-cli",
+    "version": "1.0.0",
+    "description": "A comprehensive CLI tool for managing multiple Roku projects with automated device discovery, build integration, and package generation. Perfect for CI/CD pipelines with full automation support.",
+    "main": "dist/index.js",
+    "bin": {
+        "roku-pkg": "dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "build:clean": "rm -rf dist && npm run build",
+        "dev": "tsx src/index.ts",
+        "start": "node dist/index.js",
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage",
+        "lint": "echo 'No linter configured'",
+        "prepack": "npm run build:clean",
+        "prepublishOnly": "npm run build:clean"
+    },
+    "keywords": [
+        "roku",
+        "cli",
+        "package",
+        "deployment",
+        "automation",
+        "brightscript",
+        "scenegraph",
+        "device-discovery",
+        "ssdp",
+        "ci-cd",
+        "build-automation",
+        "roku-deploy",
+        "roku-development"
+    ],
+    "author": "jcjoyac",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jcjoyac/roku-pkg-cli.git"
+    },
+    "bugs": {
+        "url": "https://github.com/jcjoyac/roku-pkg-cli/issues"
+    },
+    "homepage": "https://github.com/jcjoyac/roku-pkg-cli#readme",
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "files": [
+        "dist/**/*",
+        "README.md",
+        "LICENSE"
+    ],
+    "dependencies": {
+        "archiver": "^7.0.1",
+        "axios": "^1.7.10",
+        "chalk": "^4.1.2",
+        "commander": "^14.0.0",
+        "form-data": "^4.0.1",
+        "inquirer": "^8.2.6",
+        "ora": "^5.4.1",
+        "roku-deploy": "^3.12.6"
+    },
+    "devDependencies": {
+        "@types/archiver": "^6.0.3",
+        "@types/form-data": "^2.5.2",
+        "@types/inquirer": "^9.0.8",
+        "@types/jest": "^29.5.14",
+        "@types/node": "^22.12.1",
+        "jest": "^29.7.0",
+        "ts-jest": "^29.2.5",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.3"
+    }
+}
