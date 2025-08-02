@@ -37,12 +37,12 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/jcjoyac/roku-pkg-cli.git"
+        "url": "git+https://github.com/jack1590/roku-pkg-cli.git"
     },
     "bugs": {
-        "url": "https://github.com/jcjoyac/roku-pkg-cli/issues"
+        "url": "https://github.com/jack1590/roku-pkg-cli/issues"
     },
-    "homepage": "https://github.com/jcjoyac/roku-pkg-cli#readme",
+    "homepage": "https://github.com/jack1590/roku-pkg-cli#readme",
     "engines": {
         "node": ">=16.0.0"
     },

@@ -35,7 +35,7 @@ npm install -g @jcjoyac/roku-pkg-cli
 
 ```bash
 # Clone the repository
-git clone https://github.com/jcjoyac/roku-pkg-cli.git
+git clone https://github.com/jack1590/roku-pkg-cli.git
 cd roku-pkg-cli
 
 # Install dependencies
