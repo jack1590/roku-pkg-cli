@@ -307,6 +307,50 @@ npm run build
 npm run dev
 ```
 
+## Automatic Publishing Setup
+
+This project is configured to automatically publish to npm when a GitHub release is created. To set this up:
+
+### Prerequisites
+
+1. **NPM Account**: You need an npm account with publishing permissions
+2. **NPM Token**: Generate an automation token from npmjs.com
+
+### Setup Steps
+
+1. **Generate NPM Token**:
+   - Go to [npmjs.com](https://www.npmjs.com) and log in
+   - Navigate to Access Tokens in your account settings
+   - Generate a new "Automation" token
+   - Copy the token (it starts with `npm_`)
+
+2. **Add GitHub Secret**:
+   - Go to your GitHub repository settings
+   - Navigate to "Secrets and variables" → "Actions"
+   - Click "New repository secret"
+   - Name: `NPM_TOKEN`
+   - Value: Paste your npm token
+
+3. **Create a Release**:
+   - Go to GitHub releases and click "Create a new release"
+   - Create a tag with version format `v1.2.3` (following semver)
+   - Write release notes
+   - Click "Publish release"
+
+4. **Automatic Publishing**:
+   - The GitHub Action will automatically:
+     - Run all tests
+     - Update package.json version to match the release tag
+     - Build the project
+     - Publish to npm registry
+     - Report success/failure
+
+### Version Management
+
+- Release tags should follow semantic versioning: `v1.0.0`, `v1.1.0`, `v2.0.0`
+- The GitHub Action automatically syncs the package.json version with the release tag
+- Only non-prerelease releases trigger automatic publishing
+
 ## Dependencies
 
 This tool uses the official [roku-deploy](https://github.com/RokuCommunity/roku-deploy) package from the Roku Community for building, deploying, and packaging Roku applications.
