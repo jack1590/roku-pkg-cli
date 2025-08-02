@@ -2,6 +2,8 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { listCommand } from './commands/list';
 import { addCommand } from './commands/add';
 import { deviceCommand } from './commands/device';
@@ -12,10 +14,13 @@ import { removeCommand } from './commands/remove';
 
 const program = new Command();
 
+// Read version from package.json
+const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+
 program
     .name('roku-pkg')
     .description('Roku Package Management CLI')
-    .version('1.0.0');
+    .version(packageJson.version);
 
 // Add all commands
 listCommand(program);
