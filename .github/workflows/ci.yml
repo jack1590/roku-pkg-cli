@@ -67,7 +67,17 @@ jobs:
       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
     - name: Update package.json version
-      run: npm version ${{ steps.get_version.outputs.VERSION }} --no-git-tag-version
+      run: |
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        TARGET_VERSION="${{ steps.get_version.outputs.VERSION }}"
+        echo "Current version: $CURRENT_VERSION"
+        echo "Target version: $TARGET_VERSION"
+        if [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
+          echo "Updating package.json version from $CURRENT_VERSION to $TARGET_VERSION"
+          npm version $TARGET_VERSION --no-git-tag-version
+        else
+          echo "Version already correct ($CURRENT_VERSION), skipping update"
+        fi
 
     - name: Build project
       run: npm run build
@@ -76,11 +86,15 @@ jobs:
       run: |
         echo "Verifying package contents..."
         npm pack --dry-run
-        echo "Checking package.json version matches release tag..."
+        echo "Final version check..."
         PACKAGE_VERSION=$(node -p "require('./package.json').version")
+        echo "Package version: $PACKAGE_VERSION"
+        echo "Release tag version: ${{ steps.get_version.outputs.VERSION }}"
         if [ "$PACKAGE_VERSION" != "${{ steps.get_version.outputs.VERSION }}" ]; then
-          echo "Version mismatch: package.json=$PACKAGE_VERSION, tag=${{ steps.get_version.outputs.VERSION }}"
+          echo "❌ Version mismatch: package.json=$PACKAGE_VERSION, tag=${{ steps.get_version.outputs.VERSION }}"
           exit 1
+        else
+          echo "✅ Version verification passed"
         fi
 
     - name: Publish to NPM
