@@ -20,7 +20,7 @@ A comprehensive command-line tool for managing multiple Roku projects and automa
 
 ### Prerequisites
 
-- Node.js v16 or higher
+- Node.js v18 or higher
 - npm, yarn, or pnpm
 - A Roku device in developer mode
 - Roku app source code with proper structure

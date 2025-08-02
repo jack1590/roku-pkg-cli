@@ -44,7 +44,7 @@
     },
     "homepage": "https://github.com/jack1590/roku-pkg-cli#readme",
     "engines": {
-        "node": ">=16.0.0"
+        "node": ">=18.0.0"
     },
     "files": [
         "dist/**/*",
