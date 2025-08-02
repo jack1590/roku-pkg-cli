@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { Config, Project, RokuDevice } from '../types';
 
 export class ConfigManager {
@@ -10,7 +11,14 @@ export class ConfigManager {
     };
 
     constructor() {
-        this.configPath = path.join(process.cwd(), 'roku-pkg-config.json');
+        const configDir = path.join(os.homedir(), '.roku-pkg');
+        this.configPath = path.join(configDir, 'config.json');
+        
+        // Ensure config directory exists
+        if (!fs.existsSync(configDir)) {
+            fs.mkdirSync(configDir, { recursive: true });
+        }
+        
         this.loadConfig();
     }
 
