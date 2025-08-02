@@ -68,30 +68,7 @@ export class RokuDeployManager {
             retainStagingFolder: options.retainStagingFolder || false
         };
 
-        console.log('\n=== deployAndSignPackage Debug Info ===');
-        console.log('Root directory:', deployOptions.rootDir);
-        console.log('Root directory exists:', fs.existsSync(deployOptions.rootDir));
-        console.log('Files patterns:', JSON.stringify(deployOptions.files, null, 2));
-        console.log('Output file:', deployOptions.outFile);
 
-        // Check what files exist in rootDir
-        if (fs.existsSync(deployOptions.rootDir)) {
-            const contents = fs.readdirSync(deployOptions.rootDir);
-            console.log('Root directory contents:', contents);
-
-            // Check specific directories
-            ['source', 'components', 'images', 'fonts', 'lib'].forEach(dir => {
-                const dirPath = path.join(deployOptions.rootDir, dir);
-                if (fs.existsSync(dirPath)) {
-                    const fileCount = fs.readdirSync(dirPath).length;
-                    console.log(`${dir}/ exists with ${fileCount} items`);
-                } else {
-                    console.log(`${dir}/ does not exist`);
-                }
-            });
-        }
-
-        console.log('=== Starting deployAndSignPackage ===\n');
 
         try {
             console.log('Calling rokuDeploy.deployAndSignPackage...');
@@ -111,8 +88,8 @@ export class RokuDeployManager {
 
             const endTime = Date.now();
             console.log('Deployment completed in:', (endTime - startTime) / 1000, 'seconds');
-            console.log('deployAndSignPackage completed successfully');
-            console.log('deployAndSignPackage result:', result);
+
+
             return result;
         } catch (error: any) {
             console.error('deployAndSignPackage error:', error);
@@ -139,27 +116,13 @@ export class RokuDeployManager {
             devId: options.devId
         };
 
-        console.log('\n=== Rekey Device Debug Info ===');
-        console.log('Host:', rekeyOptions.host);
-        console.log('Package path:', rekeyOptions.rekeySignedPackage);
-        console.log('Package exists:', fs.existsSync(rekeyOptions.rekeySignedPackage));
 
-        if (fs.existsSync(rekeyOptions.rekeySignedPackage)) {
-            const stats = fs.statSync(rekeyOptions.rekeySignedPackage);
-            console.log('Package size:', (stats.size / 1024 / 1024).toFixed(2), 'MB');
-            console.log('Package readable:', fs.accessSync(rekeyOptions.rekeySignedPackage, fs.constants.R_OK) === undefined);
-        }
-
-        console.log('Has signing password:', !!rekeyOptions.signingPassword);
-        console.log('Has dev ID:', !!rekeyOptions.devId);
-        console.log('=== Starting rekey operation ===\n');
 
         try {
             await rokuDeploy.rekeyDevice(rekeyOptions);
-            console.log('=== Rekey completed successfully ===\n');
+
         } catch (error: any) {
-            console.error('=== Rekey failed ===');
-            console.error('Error details:', error);
+
             throw error;
         }
     }
@@ -169,7 +132,7 @@ export class RokuDeployManager {
      */
     async createPackage(options: RokuDeployOptions): Promise<string> {
         // First create a zip package
-        console.log('\n=== Creating zip package first ===');
+
         const zipPath = await this.zipPackage({
             rootDir: options.rootDir,
             files: options.files,
@@ -192,17 +155,12 @@ export class RokuDeployManager {
             rootDir: options.rootDir
         };
 
-        console.log('\n=== createPackage Debug Info ===');
-        console.log('Signing package with options:', JSON.stringify({
-            host: packageOptions.host,
-            outFile: packageOptions.outFile,
-            stagingDir: packageOptions.stagingDir
-        }, null, 2));
+
 
         try {
             // Use publish method which signs the already deployed app
             const result = await rokuDeploy.publish(packageOptions);
-            console.log('Package signing result:', result);
+
 
             // Look for the created package
             const pkgPath = path.join(packageOptions.stagingDir || './out', packageOptions.outFile + '.pkg');
@@ -244,10 +202,7 @@ export class RokuDeployManager {
             outDir: options.outDir || './build'
         };
 
-        console.log('\n=== zipPackage Debug Info ===');
-        console.log('Creating zip from:', zipOptions.rootDir);
-        console.log('Files patterns:', JSON.stringify(zipOptions.files, null, 2));
-        console.log('Output:', path.join(zipOptions.outDir, zipOptions.outFile));
+
 
         const result: any = await rokuDeploy.zipPackage(zipOptions);
         const zipPath = result.packagePath || path.join(result.outDir, result.outFile);
@@ -257,8 +212,7 @@ export class RokuDeployManager {
             throw new Error(`Failed to create zip at: ${zipPath}`);
         }
 
-        console.log('Zip created successfully at:', zipPath);
-        console.log('Zip file size:', fs.statSync(zipPath).size, 'bytes');
+
 
         return zipPath;
     }
@@ -269,15 +223,14 @@ export class RokuDeployManager {
     validateProject(rootDir: string): { valid: boolean; errors: string[] } {
         const errors: string[] = [];
 
-        console.log('\n=== Validating project structure ===');
-        console.log('Root directory:', rootDir);
+
 
         // Check for manifest
         const manifestPath = path.join(rootDir, 'manifest');
         if (!fs.existsSync(manifestPath)) {
             errors.push('Missing required file: manifest');
         } else {
-            console.log('✓ manifest exists');
+
         }
 
         // Check for source directory
@@ -285,18 +238,17 @@ export class RokuDeployManager {
         if (!fs.existsSync(sourcePath)) {
             errors.push('Missing required directory: source');
         } else {
-            console.log('✓ source/ exists');
+
             // Check for main.brs
             const mainPath = path.join(sourcePath, 'main.brs');
             if (!fs.existsSync(mainPath)) {
                 errors.push('Missing required file: source/main.brs');
             } else {
-                console.log('✓ source/main.brs exists');
+
             }
         }
 
-        console.log('Validation complete. Valid:', errors.length === 0);
-        console.log('=== End validation ===\n');
+
 
         return {
             valid: errors.length === 0,

@@ -21,7 +21,7 @@ async function waitForBuildOutput(buildDir: string, timeoutMs: number = 30000): 
     const startTime = Date.now();
     const manifestPath = path.join(buildDir, 'manifest');
     const sourcePath = path.join(buildDir, 'source');
-    
+
     while (Date.now() - startTime < timeoutMs) {
         // Check if manifest exists and is readable
         if (fs.existsSync(manifestPath) && fs.existsSync(sourcePath)) {
@@ -37,11 +37,11 @@ async function waitForBuildOutput(buildDir: string, timeoutMs: number = 30000): 
                 // File might still be being written
             }
         }
-        
+
         // Wait before checking again
         await new Promise(resolve => setTimeout(resolve, 500));
     }
-    
+
     throw new Error(`Build output not ready after ${timeoutMs}ms. Check that the build completed successfully.`);
 }
 
@@ -108,6 +108,9 @@ export function generateCommand(program: Command) {
 
             const spinner = ora();
             const deployManager = new RokuDeployManager();
+
+            // Declare temp directory path at function scope for cleanup access
+            let tempBuildDir: string | undefined;
 
             try {
 
@@ -367,14 +370,49 @@ export function generateCommand(program: Command) {
                 // Step 4: Deploy and create signed package
                 spinner.start('Building, deploying, and creating signed package...');
 
-                // For deployment, we simply use everything in the build directory
-                // The build process has already created the correct structure
+                // Copy build files to a safe temporary directory to avoid race conditions
+                // The build compiler appears to be cleaning up files asynchronously
+                tempBuildDir = path.join(project.rootDir, '.roku-deploy-temp');
+
+                try {
+                    // Ensure temp directory is clean
+                    if (fs.existsSync(tempBuildDir)) {
+                        fs.rmSync(tempBuildDir, { recursive: true, force: true });
+                    }
+                    fs.mkdirSync(tempBuildDir, { recursive: true });
+
+                    // Copy all files from build directory to temp directory
+                    spinner.text = 'Preparing deployment files...';
+                    console.log(chalk.gray(`\nCopying build files from: ${buildDir}`));
+                    console.log(chalk.gray(`To safe deployment directory: ${tempBuildDir}`));
+
+                    const { execSync } = require('child_process');
+                    execSync(`cp -R "${buildDir}"/* "${tempBuildDir}"/`, { stdio: 'pipe' });
+
+                    console.log(chalk.gray('Files copied successfully\n'));
+                } catch (copyError: any) {
+                    spinner.fail('Failed to prepare deployment files');
+
+                    // Clean up temp directory on copy failure
+                    try {
+                        if (fs.existsSync(tempBuildDir)) {
+                            fs.rmSync(tempBuildDir, { recursive: true, force: true });
+                        }
+                    } catch (cleanupError: any) {
+                        console.log(chalk.yellow(`Warning: Failed to clean up temporary directory: ${cleanupError.message}`));
+                    }
+
+                    console.error(chalk.red(`\nError copying build files: ${copyError.message}\n`));
+                    return;
+                }
+
+                // Use the safe temporary directory for deployment
+                const deployDir = tempBuildDir;
                 const files = [
-                    '**/*'  // Include everything in the build directory
+                    '**/*'  // Include everything in the temp directory
                 ];
 
-                console.log(chalk.gray(`\nDeploying from build directory: ${buildDir}`));
-                console.log(chalk.gray('Including all files in the build output\n'));
+                console.log(chalk.gray(`Deploying from safe temp directory: ${deployDir}`));
 
                 let packagePath: string;
 
@@ -388,7 +426,7 @@ export function generateCommand(program: Command) {
                         packagePath = await deployManager.createPackage({
                             host: device.ip,
                             password: device.password,
-                            rootDir: buildDir,
+                            rootDir: deployDir,
                             files: files,
                             signingPassword: project.signKey,
                             outFile: path.basename(project.outputLocation, '.pkg')
@@ -397,6 +435,16 @@ export function generateCommand(program: Command) {
                         spinner.succeed('Package created successfully');
                     } catch (error: any) {
                         spinner.fail('Failed to create package');
+
+                        // Clean up temp directory on package creation failure  
+                        try {
+                            if (fs.existsSync(tempBuildDir)) {
+                                fs.rmSync(tempBuildDir, { recursive: true, force: true });
+                            }
+                        } catch (cleanupError: any) {
+                            console.log(chalk.yellow(`Warning: Failed to clean up temporary directory: ${cleanupError.message}`));
+                        }
+
                         console.error(chalk.red(`\nError: ${error.message}\n`));
                         return;
                     }
@@ -413,16 +461,18 @@ export function generateCommand(program: Command) {
                             console.log(chalk.gray(`  ... still deploying (${heartbeatCount * 10}s elapsed)`));
                         }, 10000); // Log every 10 seconds
 
+
+
                         packagePath = await Promise.race([
                             deployManager.deployAndSignPackage({
                                 host: device.ip,
                                 password: device.password,
-                                rootDir: buildDir,  // Use the build directory
+                                rootDir: deployDir,  // Use the safe temp directory
                                 files: files,
                                 signingPassword: project.signKey,
                                 // Don't pass rekeySignedPackage here since we already rekeyed
                                 outFile: path.basename(project.outputLocation, '.pkg'),
-                                retainStagingFolder: false
+                                retainStagingFolder: true
                             }).finally(() => clearInterval(heartbeatInterval)),
                             new Promise<never>((_, reject) =>
                                 setTimeout(() => {
@@ -489,6 +539,15 @@ export function generateCommand(program: Command) {
                 const stats = fs.statSync(project.outputLocation);
                 const sizeKB = (stats.size / 1024).toFixed(2);
 
+                // Clean up temporary directory
+                try {
+                    if (fs.existsSync(tempBuildDir)) {
+                        fs.rmSync(tempBuildDir, { recursive: true, force: true });
+                    }
+                } catch (cleanupError: any) {
+                    console.log(chalk.yellow(`Warning: Failed to clean up temporary directory: ${cleanupError.message}`));
+                }
+
                 spinner.succeed(`Package generated successfully!`);
                 console.log(chalk.gray(`\n📦 Package: ${project.outputLocation}`));
                 console.log(chalk.gray(`📏 Size: ${sizeKB} KB\n`));
@@ -527,6 +586,17 @@ export function generateCommand(program: Command) {
                 if (spinner && spinner.isSpinning) {
                     spinner.fail(`Failed to generate package`);
                 }
+
+                // Clean up temporary directory on error
+                try {
+                    if (tempBuildDir && fs.existsSync(tempBuildDir)) {
+                        fs.rmSync(tempBuildDir, { recursive: true, force: true });
+                        console.log(chalk.gray('Cleaned up temporary files'));
+                    }
+                } catch (cleanupError: any) {
+                    console.log(chalk.yellow(`Warning: Failed to clean up temporary directory: ${cleanupError.message}`));
+                }
+
                 console.error(chalk.red(`\nError: ${error.message}\n`));
 
                 if (error.message.includes('ECONNREFUSED')) {
