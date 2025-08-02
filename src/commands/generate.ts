@@ -11,8 +11,39 @@ import * as path from 'path';
 import { ensureDirectoryExists } from '../utils/validators';
 import { getBuildDirectory, extractBuildConfig, readBSConfig } from '../utils/vscode-config';
 import { getBuildTasks, executeTask, getAllTasks } from '../utils/vscode-tasks';
-import axios from 'axios';
 import { DiscoveredDevice, RokuDevice } from '../types';
+import axios from 'axios';
+
+/**
+ * Wait for build output to be ready by checking for required files
+ */
+async function waitForBuildOutput(buildDir: string, timeoutMs: number = 30000): Promise<void> {
+    const startTime = Date.now();
+    const manifestPath = path.join(buildDir, 'manifest');
+    const sourcePath = path.join(buildDir, 'source');
+    
+    while (Date.now() - startTime < timeoutMs) {
+        // Check if manifest exists and is readable
+        if (fs.existsSync(manifestPath) && fs.existsSync(sourcePath)) {
+            try {
+                // Try to read the manifest to ensure it's complete
+                const manifestContent = fs.readFileSync(manifestPath, 'utf8');
+                if (manifestContent.trim().length > 0) {
+                    // Wait an additional short period for any remaining writes
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return;
+                }
+            } catch (error) {
+                // File might still be being written
+            }
+        }
+        
+        // Wait before checking again
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    throw new Error(`Build output not ready after ${timeoutMs}ms. Check that the build completed successfully.`);
+}
 
 export function generateCommand(program: Command) {
     program
@@ -239,9 +270,16 @@ export function generateCommand(program: Command) {
 
                             spinner.succeed('Task completed successfully');
 
-                            // Add delay after build to ensure files are fully written
+                            // Wait for build output to be ready
                             console.log(chalk.gray('\nWaiting for build output to be ready...'));
-                            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+                            try {
+                                const buildDir = getBuildDirectory(project.rootDir);
+                                await waitForBuildOutput(buildDir, 30000);
+                                console.log(chalk.green('✓ Build output ready\n'));
+                            } catch (error: any) {
+                                console.error(chalk.red(`✗ Build output check failed: ${error.message}\n`));
+                                return;
+                            }
 
                             spinner.start('Continuing with deployment...');
                         } else {
