@@ -1,12 +1,14 @@
 import { ConfigManager } from '../../src/lib/config-manager';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 // Mock fs module
 jest.mock('fs');
+jest.mock('os');
 
 describe('ConfigManager', () => {
-    const mockConfigPath = path.join(process.cwd(), 'roku-pkg-config.json');
+    const mockConfigPath = path.join('/mock/home', '.roku-pkg', 'config.json');
     const mockConfig = {
         rokuDevice: { ip: '192.168.1.100', password: 'test123' },
         projects: [
@@ -14,13 +16,15 @@ describe('ConfigManager', () => {
                 name: 'TestApp',
                 signKey: 'testkey123',
                 signPackageLocation: '/test/package.pkg',
-                outputLocation: './output/test.pkg'
+                outputLocation: './output/test.pkg',
+                rootDir: '/test/app/root'
             }
         ]
     };
 
     beforeEach(() => {
         jest.clearAllMocks();
+        (os.homedir as jest.Mock).mockReturnValue('/mock/home');
     });
 
     describe('constructor', () => {
@@ -36,10 +40,12 @@ describe('ConfigManager', () => {
 
         it('should create default config if file does not exist', () => {
             (fs.existsSync as jest.Mock).mockReturnValue(false);
+            (fs.mkdirSync as jest.Mock).mockImplementation(() => { });
             (fs.writeFileSync as jest.Mock).mockImplementation(() => { });
 
             const configManager = new ConfigManager();
 
+            expect(fs.mkdirSync).toHaveBeenCalledWith('/mock/home/.roku-pkg', { recursive: true });
             expect(fs.writeFileSync).toHaveBeenCalled();
         });
     });
@@ -79,7 +85,8 @@ describe('ConfigManager', () => {
                 name: 'NewApp',
                 signKey: 'newkey456',
                 signPackageLocation: '/new/package.pkg',
-                outputLocation: './output/new.pkg'
+                outputLocation: './output/new.pkg',
+                rootDir: '/new/app/root'
             };
 
             configManager.addProject(newProject);
