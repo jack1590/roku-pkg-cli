@@ -105,18 +105,30 @@ jobs:
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-    - name: Create GitHub deployment
+    - name: Create GitHub deployment status
       uses: actions/github-script@v7
       with:
         script: |
-          github.rest.repos.createDeploymentStatus({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            deployment_id: context.payload.deployment?.id || 0,
-            state: 'success',
-            environment: 'npm',
-            description: 'Successfully published to npm registry'
-          })
+          try {
+            const deploymentId = context.payload.deployment?.id;
+            if (deploymentId) {
+              console.log(`Creating deployment status for deployment ${deploymentId}`);
+              await github.rest.repos.createDeploymentStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                deployment_id: deploymentId,
+                state: 'success',
+                environment: 'npm',
+                description: 'Successfully published to npm registry'
+              });
+              console.log('✅ Deployment status created successfully');
+            } else {
+              console.log('ℹ️ No deployment context found (manual release), skipping deployment status');
+            }
+          } catch (error) {
+            console.log('⚠️ Failed to create deployment status (non-critical):', error.message);
+            // Don't fail the workflow for this optional step
+          }
 
   security:
     runs-on: ubuntu-latest
