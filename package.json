@@ -1,6 +1,6 @@
 {
     "name": "roku-pkg-cli",
-    "version": "1.1.4",
+    "version": "1.1.5",
     "description": "A comprehensive CLI tool for managing multiple Roku projects with automated device discovery, build integration, and package generation. Perfect for CI/CD pipelines with full automation support.",
     "main": "dist/index.js",
     "bin": {
