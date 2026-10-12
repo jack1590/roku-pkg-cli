@@ -36,10 +36,9 @@ export class ConfigManager {
     }
 
     private saveConfig(): void {
-        fs.writeFileSync(
-            this.configPath,
-            JSON.stringify(this.config, null, 2)
-        );
+        // Holds sign keys and the device password: owner-only.
+        fs.writeFileSync(this.configPath, JSON.stringify(this.config, null, 2), { mode: 0o600 });
+        fs.chmodSync(this.configPath, 0o600);
     }
 
     getConfig(): Config {

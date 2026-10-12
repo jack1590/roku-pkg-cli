@@ -23,6 +23,7 @@ export interface Project {
     signPackageLocation: string;
     outputLocation: string;
     files?: string[];  // Optional file patterns to include in build
+    defaultBuildTask?: string;  // VSCode task label used when no build flag is given (--json)
 }
 
 export interface Config {

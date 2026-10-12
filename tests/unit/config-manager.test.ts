@@ -118,4 +118,16 @@ describe('ConfigManager', () => {
             expect(result).toBe(false);
         });
     });
-}); 
+    describe('saveConfig permissions', () => {
+        it('writes the config readable only by the owner', () => {
+            (fs.existsSync as jest.Mock).mockReturnValue(true);
+            (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockConfig));
+            const configManager = new ConfigManager();
+            configManager.updateProject('TestApp', { defaultBuildTask: 'build:prod' });
+            const [, data, opts] = (fs.writeFileSync as jest.Mock).mock.calls.at(-1);
+            expect(JSON.parse(data).projects[0].defaultBuildTask).toBe('build:prod');
+            expect(opts).toEqual({ mode: 0o600 });
+            expect(fs.chmodSync).toHaveBeenCalledWith(mockConfigPath, 0o600);
+        });
+    });
+});
