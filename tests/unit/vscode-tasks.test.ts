@@ -15,4 +15,12 @@ describe('executeTask onOutput', () => {
         setTimeout(() => ac.abort(), 100);
         await expect(p).rejects.toThrow(/terminated/);
     });
+    it('abort stops the whole task, not just its shell', async () => {
+        const ac = new AbortController();
+        const started = Date.now();
+        const p = executeTask({ label: 'nested', type: 'shell', command: 'sleep 5; echo done' }, os.tmpdir(), 10000, () => {}, ac.signal);
+        setTimeout(() => ac.abort(), 100);
+        await expect(p).rejects.toThrow(/terminated/);
+        expect(Date.now() - started).toBeLessThan(2000);
+    });
 });

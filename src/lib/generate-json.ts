@@ -207,18 +207,24 @@ export async function runGenerateJson(opts: GenerateJsonOptions, emitter: Emitte
 
         start('sign');
         let local = '';
+        // Download beside, never onto, the output: a failed download writes its error body to the target file.
+        const downloadDir = path.join(os.tmpdir(), `roku-pkg-out-${process.pid}`);
         try {
             const remote = await deps.sign({ host, password, rootDir: tempDir, signingPassword: project.signKey });
-            local = await deps.retrieve(remote, { host, password, outDir: path.dirname(project.outputLocation), outFile: path.basename(project.outputLocation, '.pkg') });
+            local = await deps.retrieve(remote, { host, password, outDir: downloadDir, outFile: path.basename(project.outputLocation, '.pkg') });
         } catch (e) {
             checkCancel();
             fail('SIGN_FAILED', (e as Error).message, 'Packaging needs the app deployed on the device; run without --package-only.');
+        } finally {
+            if (!local) deps.removeDir(downloadDir);
         }
         done('sign');
+        checkCancel();
 
         start('save');
         deps.mkdirp(path.dirname(project.outputLocation));
-        if (local !== project.outputLocation) deps.copyFile(local, project.outputLocation);
+        deps.copyFile(local, project.outputLocation);
+        deps.removeDir(downloadDir);
         done('save');
 
         await deps.home(host).catch(() => undefined);

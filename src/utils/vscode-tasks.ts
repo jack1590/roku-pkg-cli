@@ -127,7 +127,9 @@ export async function executeTask(
             cwd,
             env: { ...process.env, ...task.options?.env },
             stdio: onOutput ? ['ignore', 'pipe', 'pipe'] : 'inherit',
-            shell: true
+            shell: true,
+            // With a signal, run in its own process group so abort can stop the shell and everything it started.
+            detached: !!signal
         });
         if (onOutput) {
             for (const stream of [child.stdout, child.stderr]) {
@@ -141,7 +143,13 @@ export async function executeTask(
                 stream?.on('end', () => { if (buf) onOutput(buf); });
             }
         }
-        signal?.addEventListener('abort', () => child.kill('SIGTERM'), { once: true });
+        signal?.addEventListener('abort', () => {
+            try {
+                if (child.pid) process.kill(-child.pid, 'SIGTERM');
+            } catch {
+                child.kill('SIGTERM');
+            }
+        }, { once: true });
 
         let timeoutId: NodeJS.Timeout | undefined;
 

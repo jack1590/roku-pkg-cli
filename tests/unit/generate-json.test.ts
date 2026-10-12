@@ -102,4 +102,19 @@ describe('runGenerateJson', () => {
         expect(events.at(-1)).toMatchObject({ type: 'result', ok: false, code: 'CANCELLED', step: 'deploy' });
         expect(removed).toContain('/app/.roku-deploy-temp');
     });
+    it('cancel during sign ends CANCELLED, not ok', async () => {
+        const ac = new AbortController();
+        const deps = fakeDeps({ sign: async () => { ac.abort(); return 'pkgs/dev.pkg'; } });
+        const { code, events } = await run({ signal: ac.signal }, deps);
+        expect(code).toBe(130);
+        expect(events.at(-1)).toMatchObject({ ok: false, code: 'CANCELLED' });
+    });
+
+    it('downloads to a temp folder so a failed download never overwrites the last package', async () => {
+        const outDirs: string[] = [];
+        const deps = fakeDeps({ retrieve: async (_r, o) => { outDirs.push(o.outDir); throw new Error('HTTP 500'); } });
+        const { events } = await run({}, deps);
+        expect(outDirs[0]).not.toBe('/out');
+        expect(events.at(-1)).toMatchObject({ ok: false, code: 'SIGN_FAILED' });
+    });
 });

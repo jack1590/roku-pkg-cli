@@ -66,7 +66,8 @@ export function generateCommand(program: Command) {
                 const emitter = createEmitter((line) => process.stdout.write(line));
                 if (options.host && options.discover) {
                     emitter.emit({ type: 'result', ok: false, code: 'UNKNOWN', message: '--host cannot be combined with --discover' });
-                    process.exit(1);
+                    process.stdout.write('', () => process.exit(1));
+                    return;
                 }
                 const restore = captureConsole(emitter);
                 const controller = new AbortController();
@@ -85,7 +86,9 @@ export function generateCommand(program: Command) {
                     signal: controller.signal,
                 }, emitter);
                 restore();
-                process.exit(code);
+                // Exit only after stdout drains: a pipe can still hold the final result line.
+                process.stdout.write('', () => process.exit(code));
+                return;
             }
             if (options?.host && options?.discover) {
                 console.log(chalk.red('\nError: --host cannot be combined with --discover\n'));
