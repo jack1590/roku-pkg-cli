@@ -11,6 +11,7 @@ import { discoverCommand } from './commands/discover';
 import { generateCommand } from './commands/generate';
 import { editCommand } from './commands/edit';
 import { removeCommand } from './commands/remove';
+import { inspectCommand } from './commands/inspect';
 
 const program = new Command();
 
@@ -30,6 +31,7 @@ discoverCommand(program);
 generateCommand(program);
 editCommand(program);
 removeCommand(program);
+inspectCommand(program);
 
 program.parse(process.argv);
 

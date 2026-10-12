@@ -82,7 +82,13 @@ export function getBuildTasks(projectRootDir: string): VSCodeTask[] {
 /**
  * Execute a VSCode task
  */
-export async function executeTask(task: VSCodeTask, projectRootDir: string, timeout?: number): Promise<void> {
+export async function executeTask(
+    task: VSCodeTask,
+    projectRootDir: string,
+    timeout?: number,
+    onOutput?: (line: string) => void,
+    signal?: AbortSignal
+): Promise<void> {
     return new Promise((resolve, reject) => {
         let command: string;
         let args: string[] = [];
@@ -113,15 +119,37 @@ export async function executeTask(task: VSCodeTask, projectRootDir: string, time
                 : path.join(projectRootDir, task.options.cwd)
             : projectRootDir;
 
-        console.log(`Executing: ${command} ${args.join(' ')}`);
-        console.log(`Working directory: ${cwd}`);
+        const say = onOutput ?? ((l: string) => console.log(l));
+        say(`Executing: ${command} ${args.join(' ')}`);
+        say(`Working directory: ${cwd}`);
 
         const child = spawn(command, args, {
             cwd,
             env: { ...process.env, ...task.options?.env },
-            stdio: 'inherit',
-            shell: true
+            stdio: onOutput ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+            shell: true,
+            // With a signal, run in its own process group so abort can stop the shell and everything it started.
+            detached: !!signal
         });
+        if (onOutput) {
+            for (const stream of [child.stdout, child.stderr]) {
+                let buf = '';
+                stream?.on('data', (chunk: Buffer) => {
+                    buf += chunk.toString();
+                    const parts = buf.split(/\r?\n/);
+                    buf = parts.pop() ?? '';
+                    parts.filter(Boolean).forEach(onOutput);
+                });
+                stream?.on('end', () => { if (buf) onOutput(buf); });
+            }
+        }
+        signal?.addEventListener('abort', () => {
+            try {
+                if (child.pid) process.kill(-child.pid, 'SIGTERM');
+            } catch {
+                child.kill('SIGTERM');
+            }
+        }, { once: true });
 
         let timeoutId: NodeJS.Timeout | undefined;
 
