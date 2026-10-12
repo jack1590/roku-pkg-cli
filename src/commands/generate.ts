@@ -13,6 +13,8 @@ import { getBuildDirectory, extractBuildConfig, readBSConfig } from '../utils/vs
 import { getBuildTasks, executeTask, getAllTasks } from '../utils/vscode-tasks';
 import { DiscoveredDevice, RokuDevice } from '../types';
 import axios from 'axios';
+import { createEmitter, captureConsole } from '../lib/events';
+import { runGenerateJson } from '../lib/generate-json';
 
 /**
  * Wait for build output to be ready by checking for required files
@@ -57,7 +59,38 @@ export function generateCommand(program: Command) {
         .option('--discover', 'Discover and select a Roku device before processing')
         .option('--first-device', 'Automatically use the first discovered device (requires --discover)')
         .option('--password <password>', 'Provide the developer password (avoids interactive prompt)')
+        .option('--host <ip>', 'Use the Roku at this IP instead of the configured device')
+        .option('--json', 'Print progress as JSON lines (one event per line) and never prompt')
         .action(async (projectName?: string, options?: any) => {
+            if (options?.json) {
+                const emitter = createEmitter((line) => process.stdout.write(line));
+                if (options.host && options.discover) {
+                    emitter.emit({ type: 'result', ok: false, code: 'UNKNOWN', message: '--host cannot be combined with --discover' });
+                    process.exit(1);
+                }
+                const restore = captureConsole(emitter);
+                const controller = new AbortController();
+                const cancel = () => controller.abort();
+                process.once('SIGTERM', cancel);
+                process.once('SIGINT', cancel);
+                const code = await runGenerateJson({
+                    project: projectName,
+                    host: options.host,
+                    password: options.password,
+                    buildTask: options.buildTask,
+                    useExistingBuild: options.useExistingBuild,
+                    skipBuild: options.skipBuild,
+                    skipRekey: options.skipRekey,
+                    packageOnly: options.packageOnly,
+                    signal: controller.signal,
+                }, emitter);
+                restore();
+                process.exit(code);
+            }
+            if (options?.host && options?.discover) {
+                console.log(chalk.red('\nError: --host cannot be combined with --discover\n'));
+                return;
+            }
             // Validate flag combinations
             if (options?.firstDevice && !options?.discover) {
                 console.log(chalk.red('\nError: --first-device can only be used with --discover\n'));
@@ -92,6 +125,7 @@ export function generateCommand(program: Command) {
             }
 
             let device = configManager.getRokuDevice();
+            if (options?.host) device = { ...device, ip: options.host, password: options?.password ?? device.password };
 
             // If discover option is provided, run device discovery first
             if (options?.discover) {

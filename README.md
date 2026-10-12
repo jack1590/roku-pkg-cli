@@ -147,6 +147,33 @@ roku-pkg generate MyApp
 roku-pkg generate  # Select from list
 ```
 
+### Machine-readable output (`--json`)
+
+`generate --json` prints one JSON object per line and never prompts, so other tools (and Roku Dev Studio's Packager) can drive it:
+
+```bash
+roku-pkg generate CNBC --json --host 192.168.0.13 --password "$ROKU_DEV_PASSWORD" --use-existing-build
+```
+
+```
+{"type":"step","step":"home","status":"start"}
+{"type":"step","step":"home","status":"done","ms":2010}
+{"type":"step","step":"build","status":"skip","detail":"used existing build"}
+...
+{"type":"result","ok":true,"packagePath":"/Users/me/builds/CNBC.pkg","sizeBytes":19293184,"version":"4.12.0"}
+```
+
+Steps are `home`, `build`, `validate`, `rekey`, `deploy`, `sign` and `save`. A failed run ends with
+`{"type":"result","ok":false,"step":"rekey","code":"REKEY_FAILED","message":"...","hint":"..."}`.
+Error codes: `PROJECT_NOT_FOUND`, `DEVICE_UNREACHABLE`, `AUTH_FAILED`, `NEEDS_BUILD_CHOICE`, `TASK_NOT_FOUND`,
+`BUILD_FAILED`, `BUILD_TIMEOUT`, `INVALID_BUILD`, `SIGNED_PKG_MISSING`, `REKEY_FAILED`, `DEPLOY_FAILED`,
+`DEPLOY_TIMEOUT`, `SIGN_FAILED`, `CANCELLED`, `UNKNOWN`. Exit code is 0 on success, 1 on failure, 130 when cancelled.
+
+With no build flag, `--json` uses the project's `defaultBuildTask`; if it has none and VSCode tasks exist, it fails with `NEEDS_BUILD_CHOICE`.
+
+### `roku-pkg inspect <dir> [--json]`
+Shows what roku-pkg detects in an app folder: manifest title and version, the build folder (and where it came from), and the VSCode tasks.
+
 ## Project Structure Requirements
 
 Your Roku app must follow the standard structure:

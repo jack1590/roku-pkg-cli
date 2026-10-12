@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-11
+
+### Added
+- `generate --json`: progress as JSON lines (`step`, `log`, `result`). Never prompts; every prompt site fails with an error code instead. SIGTERM/SIGINT report `CANCELLED` and exit 130.
+- `generate --host <ip>`: use a specific device without changing the saved one. Cannot be combined with `--discover`.
+- `inspect <dir> [--json]`: manifest, build folder and VSCode tasks of a Roku app folder.
+- Projects can store `defaultBuildTask`, used by `--json` runs when no build flag is given.
+
+### Changed
+- The config file (`~/.roku-pkg/config.json`) is now written readable only by its owner (0600). It holds sign keys and the device password.
+
 ## [1.0.0] - 2024-01-XX
 
 ### Added
