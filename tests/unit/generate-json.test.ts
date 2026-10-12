@@ -117,4 +117,9 @@ describe('runGenerateJson', () => {
         expect(outDirs[0]).not.toBe('/out');
         expect(events.at(-1)).toMatchObject({ ok: false, code: 'SIGN_FAILED' });
     });
+    it('reports an absolute package path even when outputLocation is relative', async () => {
+        const deps = fakeDeps({ config: { getProject: () => ({ ...project, outputLocation: './output/CNBC.pkg' }), getRokuDevice: () => ({ ip: '', password: '' }) } });
+        const { events } = await run({}, deps);
+        expect(events.at(-1)).toMatchObject({ ok: true, packagePath: require('path').resolve('./output/CNBC.pkg') });
+    });
 });
