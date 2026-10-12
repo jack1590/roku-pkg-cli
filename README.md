@@ -167,7 +167,7 @@ Steps are `home`, `build`, `validate`, `rekey`, `deploy`, `sign` and `save`. A f
 `{"type":"result","ok":false,"step":"rekey","code":"REKEY_FAILED","message":"...","hint":"..."}`.
 Error codes: `PROJECT_NOT_FOUND`, `DEVICE_UNREACHABLE`, `AUTH_FAILED`, `NEEDS_BUILD_CHOICE`, `TASK_NOT_FOUND`,
 `BUILD_FAILED`, `BUILD_TIMEOUT`, `INVALID_BUILD`, `SIGNED_PKG_MISSING`, `REKEY_FAILED`, `DEPLOY_FAILED`,
-`DEPLOY_TIMEOUT`, `SIGN_FAILED`, `CANCELLED`, `UNKNOWN`. Exit code is 0 on success, 1 on failure, 130 when cancelled.
+`DEPLOY_TIMEOUT`, `SIGN_FAILED`, `KEY_MISMATCH`, `CANCELLED`, `UNKNOWN`. Exit code is 0 on success, 1 on failure, 130 when cancelled.
 
 With no build flag, `--json` uses the project's `defaultBuildTask`; if it has none and VSCode tasks exist, it fails with `NEEDS_BUILD_CHOICE`.
 

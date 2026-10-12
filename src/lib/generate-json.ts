@@ -216,7 +216,18 @@ export async function runGenerateJson(opts: GenerateJsonOptions, emitter: Emitte
             local = await deps.retrieve(remote, { host, password, outDir: downloadDir, outFile: path.basename(outputLocation, '.pkg') });
         } catch (e) {
             checkCancel();
-            fail('SIGN_FAILED', (e as Error).message, 'Packaging needs the app deployed on the device; run without --package-only.');
+            const msg = (e as Error).message;
+            // The device signs with the key it was last rekeyed with; another app's key rejects this sign key.
+            if (/invalid password/i.test(msg)) {
+                fail(
+                    'KEY_MISMATCH',
+                    `The device is keyed for a different app, so it rejected ${project.name}'s sign key.`,
+                    opts.skipRekey
+                        ? `Run again without skipping the rekey, so the device gets ${project.name}'s key.`
+                        : `Check that the sign key matches ${path.basename(project.signPackageLocation)}, then run again.`
+                );
+            }
+            fail('SIGN_FAILED', msg, opts.packageOnly ? 'Package only needs the app already deployed on the device; run again without Package only.' : undefined);
         } finally {
             if (!local) deps.removeDir(downloadDir);
         }
