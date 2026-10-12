@@ -4,7 +4,7 @@ export type Step = 'home' | 'build' | 'validate' | 'rekey' | 'deploy' | 'sign' |
 export type ErrorCode =
     | 'PROJECT_NOT_FOUND' | 'DEVICE_UNREACHABLE' | 'AUTH_FAILED' | 'NEEDS_BUILD_CHOICE'
     | 'TASK_NOT_FOUND' | 'BUILD_FAILED' | 'BUILD_TIMEOUT' | 'INVALID_BUILD' | 'SIGNED_PKG_MISSING'
-    | 'REKEY_FAILED' | 'DEPLOY_FAILED' | 'DEPLOY_TIMEOUT' | 'SIGN_FAILED' | 'CANCELLED' | 'UNKNOWN';
+    | 'REKEY_FAILED' | 'DEPLOY_FAILED' | 'DEPLOY_TIMEOUT' | 'SIGN_FAILED' | 'KEY_MISMATCH' | 'CANCELLED' | 'UNKNOWN';
 export type StepStatus = 'start' | 'done' | 'skip' | 'fail';
 export type PkgEvent =
     | { type: 'step'; step: Step; status: StepStatus; ms?: number; detail?: string }

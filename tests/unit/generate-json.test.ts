@@ -117,4 +117,33 @@ describe('runGenerateJson', () => {
         expect(outDirs[0]).not.toBe('/out');
         expect(events.at(-1)).toMatchObject({ ok: false, code: 'SIGN_FAILED' });
     });
+    it('reports an absolute package path even when outputLocation is relative', async () => {
+        const deps = fakeDeps({ config: { getProject: () => ({ ...project, outputLocation: './output/CNBC.pkg' }), getRokuDevice: () => ({ ip: '', password: '' }) } });
+        const { events } = await run({}, deps);
+        expect(events.at(-1)).toMatchObject({ ok: true, packagePath: require('path').resolve('./output/CNBC.pkg') });
+    });
+
+    it('explains a key mismatch when rekey was skipped', async () => {
+        const deps = fakeDeps({ sign: async () => { throw new Error('Failed: Invalid Password.'); } });
+        const { events } = await run({ skipRekey: true }, deps);
+        const r = events.at(-1) as { code: string; step: string; message: string; hint: string };
+        expect(r.code).toBe('KEY_MISMATCH');
+        expect(r.step).toBe('sign');
+        expect(r.message).toMatch(/keyed for a different app/);
+        expect(r.hint).toMatch(/rekey/i);
+        expect(r.hint).not.toMatch(/package-only/);
+    });
+
+    it('explains a key mismatch even after a rekey', async () => {
+        const deps = fakeDeps({ sign: async () => { throw new Error('Failed: Invalid Password.'); } });
+        const { events } = await run({}, deps);
+        expect(events.at(-1)).toMatchObject({ code: 'KEY_MISMATCH', step: 'sign' });
+    });
+
+    it('only suggests a deploy for other sign failures when package-only was used', async () => {
+        const deps = fakeDeps({ sign: async () => { throw new Error('No app to package'); } });
+        expect((await run({}, deps)).events.at(-1)).toMatchObject({ code: 'SIGN_FAILED' });
+        expect(((await run({}, deps)).events.at(-1) as { hint?: string }).hint ?? '').not.toMatch(/package-only/);
+        expect(((await run({ packageOnly: true }, deps)).events.at(-1) as { hint?: string }).hint).toMatch(/package only/i);
+    });
 });

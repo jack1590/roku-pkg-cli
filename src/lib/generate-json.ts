@@ -128,6 +128,8 @@ export async function runGenerateJson(opts: GenerateJsonOptions, emitter: Emitte
         const project = opts.project ? deps.config.getProject(opts.project) : undefined;
         if (!project) return fail('PROJECT_NOT_FOUND', `Project '${opts.project ?? ''}' not found.`, 'Run roku-pkg list to see the configured projects.');
         const configured = deps.config.getRokuDevice();
+        // Relative output paths resolve against the working directory; report and use the absolute path.
+        const outputLocation = path.resolve(project.outputLocation);
         const host = opts.host || configured.ip;
         const password = opts.password ?? configured.password;
 
@@ -211,10 +213,21 @@ export async function runGenerateJson(opts: GenerateJsonOptions, emitter: Emitte
         const downloadDir = path.join(os.tmpdir(), `roku-pkg-out-${process.pid}`);
         try {
             const remote = await deps.sign({ host, password, rootDir: tempDir, signingPassword: project.signKey });
-            local = await deps.retrieve(remote, { host, password, outDir: downloadDir, outFile: path.basename(project.outputLocation, '.pkg') });
+            local = await deps.retrieve(remote, { host, password, outDir: downloadDir, outFile: path.basename(outputLocation, '.pkg') });
         } catch (e) {
             checkCancel();
-            fail('SIGN_FAILED', (e as Error).message, 'Packaging needs the app deployed on the device; run without --package-only.');
+            const msg = (e as Error).message;
+            // The device signs with the key it was last rekeyed with; another app's key rejects this sign key.
+            if (/invalid password/i.test(msg)) {
+                fail(
+                    'KEY_MISMATCH',
+                    `The device is keyed for a different app, so it rejected ${project.name}'s sign key.`,
+                    opts.skipRekey
+                        ? `Run again without skipping the rekey, so the device gets ${project.name}'s key.`
+                        : `Check that the sign key matches ${path.basename(project.signPackageLocation)}, then run again.`
+                );
+            }
+            fail('SIGN_FAILED', msg, opts.packageOnly ? 'Package only needs the app already deployed on the device; run again without Package only.' : undefined);
         } finally {
             if (!local) deps.removeDir(downloadDir);
         }
@@ -222,13 +235,13 @@ export async function runGenerateJson(opts: GenerateJsonOptions, emitter: Emitte
         checkCancel();
 
         start('save');
-        deps.mkdirp(path.dirname(project.outputLocation));
-        deps.copyFile(local, project.outputLocation);
+        deps.mkdirp(path.dirname(outputLocation));
+        deps.copyFile(local, outputLocation);
         deps.removeDir(downloadDir);
         done('save');
 
         await deps.home(host).catch(() => undefined);
-        emitter.emit({ type: 'result', ok: true, packagePath: project.outputLocation, sizeBytes: deps.size(project.outputLocation), version: deps.readVersion(project.rootDir) });
+        emitter.emit({ type: 'result', ok: true, packagePath: outputLocation, sizeBytes: deps.size(outputLocation), version: deps.readVersion(project.rootDir) });
         return 0;
     } catch (e) {
         const err = opts.signal?.aborted
